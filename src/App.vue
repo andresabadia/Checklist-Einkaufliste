@@ -4,15 +4,15 @@
       <div class="top">
         <div class="title">Einkaufliste</div>
         <div class="input">
-          <input type="text" placeholder="z.B. Milch"  v-model="newItemInput" @keyup.enter="kaufen">
+          <input type="text" placeholder="z.B. Milch"  v-model="newItemInput" @keyup.enter="addItem">
           <button @click="syncData" v-if="showSync"><i class="fas fa-sync" :class="{'synchronizing':statusSyncData}"></i></button> 
-          <button @click="kaufen" v-else><i class="fas fa-plus"></i></button>
+          <button @click="addItem" v-else><i class="fas fa-plus"></i></button>
           <button @click="showMenu = !showMenu"><i class="fas fa-ellipsis-v"></i></button>    
         </div>
       </div>
       <div class="liste">
         <transition-group name="main-list" tag="ul">>
-          <li v-for="(item, index) in items" @click="gekauft(index)" @dblclick="removeItem(index)" :key="item.timestamp" :class="{'gekauft':items[index].status=='gekauft'}"> {{ item.item }} - ( {{items[index].quantity}} ) </li>
+          <li v-for="(item, index) in items" @click="checkItem(index)" @dblclick="removeItem(index)" :key="item.timestamp" :class="{'checked':items[index].status=='checked'}"> {{ item.item }} - ( {{items[index].quantity}} ) </li>
         </transition-group>
       </div>
       <div>
@@ -25,8 +25,8 @@
           <div @click="showMenu = !showMenu"><span><i class="fas fa-times"></i></span></div>
           <div><span>Neue Liste</span></div>
           <div><span @click="emptyList">Liste Leeren</span></div>
-          <div><span>Gekaufte Löschen</span></div> 
-          <div><span>Gekauft nach unten</span></div>          
+          <div><span @click="removeChecked">Gekaufte Löschen</span></div> 
+          <div><span @click="checkedToBottom">Gekauft nach unten</span></div>          
           <div><span>Einkaufliste Teilen</span></div>
           <div><span>Login</span></div>
           <div><span>Hilfe</span></div>
@@ -47,28 +47,29 @@ export default {
           quantity: 1,
           timestamp: '1',
           userID:'',
-          status: 'kaufen'
+          status: 'unchecked'
         },
         {
           item: 'Brot',
           quantity: 2,
           timestamp: '2',
           userID:'',
-          status: 'gekauft'
+          status: 'unchecked'
         },
         {
           item: 'Zucker',
           quantity: 1,
           timestamp: '3',
           userID:'',
-          status: 'kaufen'
+          status: 'unchecked'
         }
       ],      
       newItemInput:'',
       showMenu:false,
       showSync: true,
       statusSyncData: false,
-      clicked: 0
+      clicked: 0,
+      itemIndexTmp: ''
     }
   },
   created(){
@@ -91,17 +92,17 @@ export default {
       localStorage.removeItem('items');
     },
     removeItem(index){      
-      if(this.items[index].status == 'gekauft'){
+      if(this.items[index].status == 'checked'){
         this.items.splice(index, 1)
         this.syncDataLocal()
         return
       }
     },
-    gekauft(index){
-      if (this.items[index].status == 'kaufen'){
-        this.items[index].status = 'gekauft'        
+    checkItem(index){
+      if (this.items[index].status == 'unchecked'){
+        this.items[index].status = 'checked'        
       }  else {
-        this.items[index].status = 'kaufen'
+        this.items[index].status = 'unchecked'
       }
       
       this.syncDataLocal()
@@ -109,22 +110,27 @@ export default {
       let vm=this
       vm.clicked++
       if(vm.clicked==1){
+        vm.itemIndexTmp = index
         setTimeout(()=>{
           vm.clicked=0
         },300)
       }else{
         vm.clicked=0
-        vm.removeItem(index)
+        if(index == vm.itemIndexTmp){
+          vm.itemIndexTmp = ''
+          vm.removeItem(index)
+        }
+        
       }           
     },
-    kaufen(){
+    addItem(){
       if(this.newItemInput == ''){ return }
       let newItem={
         item:'',
         quantity: 1,
         timestamp:'',
         userID:'',
-        status: 'kaufen'
+        status: 'unchecked'
       }
       newItem.item = this.newItemInput
       newItem.timestamp= new Date().toJSON()
@@ -135,6 +141,31 @@ export default {
     emptyList(){
       this.removeDataLocal()
       this.items=[]
+      this.showMenu=false
+    },
+    removeChecked(){
+      this.checkedToBottom()
+      let firstCheckedIndex = this.items.findIndex(firstChecked)
+      if (firstCheckedIndex != -1){
+        this.items.splice(firstCheckedIndex, this.items.length)
+      }
+      function firstChecked(object){
+        return object.status == 'checked'
+      }
+      this.syncDataLocal()
+      this.showMenu=false
+    },
+    checkedToBottom(){
+      this.items.sort(compareStatus)
+      function compareStatus(a,b){
+        if (a.status < b.status)
+          return 1;
+        if (a.status > b.status)
+          return -1;
+        return 0;
+      }
+      this.syncDataLocal()
+      this.showMenu=false
     },
     shuffle(){
       this.items = _.shuffle(this.items)
@@ -160,10 +191,10 @@ export default {
 
 <style>
 
-.gekauft{
+.checked{
   color: #b5b5b5;
 }
-.gekauft:after {
+.checked:after {
    content:  "\2713 ";
 }
 .main-list-move {
