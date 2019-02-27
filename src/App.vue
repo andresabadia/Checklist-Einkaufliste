@@ -1,0 +1,314 @@
+<template>
+  <div>
+    <div class="parent" :class="{'modal-shrink':showMenu}">
+      <div class="top">
+        <div class="title">Einkaufliste</div>
+        <div class="input">
+          <input type="text" placeholder="z.B. Milch"  v-model="newItemInput" @keyup.enter="kaufen">
+          <button @click="syncData" v-if="showSync"><i class="fas fa-sync" :class="{'synchronizing':statusSyncData}"></i></button> 
+          <button @click="kaufen" v-else><i class="fas fa-plus"></i></button>
+          <button @click="showMenu = !showMenu"><i class="fas fa-ellipsis-v"></i></button>    
+        </div>
+      </div>
+      <div class="liste">
+        <transition-group name="main-list" tag="ul">>
+          <li v-for="(item, index) in items" @click="gekauft(index)" @dblclick="removeItem(index)" :key="item.timestamp" :class="{'gekauft':items[index].status=='gekauft'}"> {{ item.item }} - ( {{items[index].quantity}} ) </li>
+        </transition-group>
+      </div>
+      <div>
+        {{newItemInput}}  
+      </div>      
+    </div>
+    <transition name="slide">
+      <div class="modal" @click="modal" v-if="showMenu">
+        <div class="modal-elemente">
+          <div @click="showMenu = !showMenu"><span><i class="fas fa-times"></i></span></div>
+          <div><span>Neue Liste</span></div>
+          <div><span @click="emptyList">Liste Leeren</span></div>
+          <div><span>Gekaufte Löschen</span></div> 
+          <div><span>Gekauft nach unten</span></div>          
+          <div><span>Einkaufliste Teilen</span></div>
+          <div><span>Login</span></div>
+          <div><span>Hilfe</span></div>
+        </div>      
+      </div>
+    </transition>
+  </div>
+      
+</template>
+
+<script>
+export default {
+  data(){
+    return{
+      items:[
+        {
+          item: 'Milch',
+          quantity: 1,
+          timestamp: '1',
+          userID:'',
+          status: 'kaufen'
+        },
+        {
+          item: 'Brot',
+          quantity: 2,
+          timestamp: '2',
+          userID:'',
+          status: 'gekauft'
+        },
+        {
+          item: 'Zucker',
+          quantity: 1,
+          timestamp: '3',
+          userID:'',
+          status: 'kaufen'
+        }
+      ],      
+      newItemInput:'',
+      showMenu:false,
+      showSync: true,
+      statusSyncData: false,
+      clicked: 0
+    }
+  },
+  created(){
+    if(localStorage.getItem('items')!=null){
+      this.items=JSON.parse(localStorage.getItem('items'))
+    }
+  },
+  methods:{
+    syncData(){
+      let vm = this
+      this.statusSyncData = true
+      setTimeout(() => {
+        this.statusSyncData = false
+      },1200)
+    },
+    syncDataLocal(){
+      localStorage.setItem('items', JSON.stringify(this.items))
+    },
+    removeDataLocal(){
+      localStorage.removeItem('items');
+    },
+    removeItem(index){      
+      if(this.items[index].status == 'gekauft'){
+        this.items.splice(index, 1)
+        this.syncDataLocal()
+        return
+      }
+    },
+    gekauft(index){
+      if (this.items[index].status == 'kaufen'){
+        this.items[index].status = 'gekauft'        
+      }  else {
+        this.items[index].status = 'kaufen'
+      }
+      
+      this.syncDataLocal()
+
+      let vm=this
+      vm.clicked++
+      if(vm.clicked==1){
+        setTimeout(()=>{
+          vm.clicked=0
+        },300)
+      }else{
+        vm.clicked=0
+        vm.removeItem(index)
+      }           
+    },
+    kaufen(){
+      if(this.newItemInput == ''){ return }
+      let newItem={
+        item:'',
+        quantity: 1,
+        timestamp:'',
+        userID:'',
+        status: 'kaufen'
+      }
+      newItem.item = this.newItemInput
+      newItem.timestamp= new Date().toJSON()
+      this.items.unshift(newItem)
+      this.newItemInput = ''  
+      this.syncDataLocal()
+    },
+    emptyList(){
+      this.removeDataLocal()
+      this.items=[]
+    },
+    shuffle(){
+      this.items = _.shuffle(this.items)
+    },
+    modal(e){
+      if(e.target.className == 'modal'){
+        this.showMenu = !this.showMenu
+      }      
+    }    
+  },
+  watch:{
+    newItemInput: function(val) {
+      if (val == '') {
+        this.showSync = true
+      } else {
+        this.showSync = false
+      } 
+    }
+  }
+}
+</script>
+
+
+<style>
+
+.gekauft{
+  color: #b5b5b5;
+}
+.gekauft:after {
+   content:  "\2713 ";
+}
+.main-list-move {
+  transition: transform .5s;
+}
+.main-list-item {
+  transition: all .5s;
+  display: inline-block;
+  margin-right: 10px;
+}
+.main-list-enter-active, .main-list-leave-active {
+  transition: all .5s;
+}
+.main-list-enter{
+  opacity: 0;
+  transform: translateY(-50px);
+}
+.main-list-leave-to {
+  opacity: 0;
+  transform: scale(0);
+}
+.main-list-leave-active {
+  position: absolute;
+}
+
+html, body{
+  font-family: 'Gloria Hallelujah', cursive;
+  margin: 0;
+  background: rgb(239, 239, 239);
+  color:#6b6b6b;
+  font-size: large;
+}
+.top{
+  margin-bottom: 20px;
+}
+.title{
+  padding: 10px 0 10px;
+  text-align: center;
+  font-size: xx-large;
+  color: #c5c5c5;
+}
+.input, .liste{
+  display: flex;
+  justify-content: center;
+}
+input{
+  height: 35px;
+  max-width: 400px;
+  width: 50%;
+  font-size: large;
+  font-family: inherit;
+  padding: 5px 10px 5px 30px;  
+  margin-right: 10px;
+  border:none;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 25px 50px 0 rgba(0, 0, 0, 0.1);
+  background: whitesmoke;
+  color:#676767;
+
+}
+input:focus{
+  outline: none;
+}
+input::placeholder{
+  color:rgb(185, 185, 185);
+}
+button{
+  height: 45px;
+  width: 45px;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+button:focus{
+  outline: none;
+}
+.fas{
+  font-size: large;
+}
+.synchronizing{
+  animation: rotating 1.2s linear infinite;
+}
+@keyframes rotating {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.fa-plus{
+  color: green;
+}
+.fa-ellipsis-v, .fa-sync{
+  color:#6b6b6b;
+}
+ul{  
+  padding: 0;
+  width: 80%;
+  max-width: 400px;
+}
+li{
+  display: block;
+  border-bottom: 1px solid #ababab;
+  padding: 10px 30px 0px;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+.modal-shrink{
+  transform: scale(0.75) translateX(-50px);
+  transition: all .3s
+}
+.parent{
+  transition: all .3s
+}
+.modal{
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #00000024;
+  width: 100%;
+  height: 100%;
+  text-align: right;
+}
+.modal-elemente{
+  padding: 30px;
+  background-color: #424242;
+  width: fit-content;
+  float: right;
+  height: 100%;
+  box-sizing: border-box;
+}
+.modal-elemente>div>span{
+  color:#f9f9f9;
+  cursor: pointer;
+}
+.fa-times{
+  font-size: xx-large;
+}
+.slide-enter-active, .slide-leave-active {
+  transition: all .3s ease-in-out;
+}
+.slide-enter, .slide-leave-to /* .fade-leave-active below version 2.1.8 */ {
+  opacity: 0;
+  width: 200%;
+  transform: translateX(150px);
+}
+
+</style>
