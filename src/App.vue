@@ -12,7 +12,7 @@
       </div>
       <div class="liste">
         <transition-group name="main-list" tag="ul">>
-          <li v-for="(item, index) in items" @click="checkItem(index)" @dblclick="removeItem(index)" :key="item.timestamp" :class="{'checked':items[index].status=='checked'}"> {{ item.item }} - ( {{items[index].quantity}} ) </li>
+          <li v-for="(item, index) in items" @click="checkItem(index)" :key="item.timestamp" :class="{'checked':items[index].status=='checked'}"> {{ item.item }} - ( {{items[index].quantity}} ) </li>
         </transition-group>
       </div>
       <div>
@@ -23,11 +23,11 @@
       <div class="modal" @click="modal" v-if="showMenu">
         <div class="modal-elemente">
           <div @click="showMenu = !showMenu"><span><i class="fas fa-times"></i></span></div>
-          <div><span>Neue Liste <i class="fas fa-file-medical"></i></span></div>
           <div><span @click="emptyList">Liste Leeren <i class="far fa-file"></i></span></div>
-          <div><span @click="removeChecked">Gekaufte Löschen <i class="fas fa-trash-alt"></i></span></div> 
-          <div><span @click="checkedToBottom">Gekauft nach unten <i class="fas fa-file-download"></i></span></div>          
+          <div><span @click="removeChecked">Gekaufte Löschen <i class="fas fa-trash-alt"></i></span></div>  
+          <div><span @click="checkedToBottom">Gekauft nach unten <i class="fas fa-file-download"></i></span></div>         
           <div><span>Einkaufliste Teilen <i class="fas fa-file-export"></i></span></div>
+          <div><span>Neue Liste <i class="fas fa-file-medical"></i></span></div>
           <div><span>Login <i class="fas fa-user"></i></span></div>
           <div><span>Hilfe <i class="fas fa-info-circle"></i></span></div>
         </div>      
@@ -74,6 +74,9 @@ export default {
     }
   },
   created(){
+    document.addEventListener("visibilitychange", () => {
+      console.log(document.hidden)
+      }, false)
     if(localStorage.getItem('items')!=null){
       this.items=JSON.parse(localStorage.getItem('items'))
     }
@@ -103,12 +106,12 @@ export default {
     },
     checkItem(index){
       if (this.items[index].status == 'unchecked'){
-        this.items[index].status = 'checked'     
+        this.items[index].status = 'checked' 
       }  else {
         this.items[index].status = 'unchecked'       
       }
       
-      this.items[index].timestamp = new Date().toJSON() 
+      // this.items[index].timestamp = new Date().toJSON() 
       this.syncDataLocal()
 
       let vm=this
