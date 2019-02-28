@@ -23,13 +23,13 @@
       <div class="modal" @click="modal" v-if="showMenu">
         <div class="modal-elemente">
           <div @click="showMenu = !showMenu"><span><i class="fas fa-times"></i></span></div>
-          <div><span>Neue Liste</span></div>
-          <div><span @click="emptyList">Liste Leeren</span></div>
-          <div><span @click="removeChecked">Gekaufte Löschen</span></div> 
-          <div><span @click="checkedToBottom">Gekauft nach unten</span></div>          
-          <div><span>Einkaufliste Teilen</span></div>
-          <div><span>Login</span></div>
-          <div><span>Hilfe</span></div>
+          <div><span>Neue Liste <i class="fas fa-file-medical"></i></span></div>
+          <div><span @click="emptyList">Liste Leeren <i class="far fa-file"></i></span></div>
+          <div><span @click="removeChecked">Gekaufte Löschen <i class="fas fa-trash-alt"></i></span></div> 
+          <div><span @click="checkedToBottom">Gekauft nach unten <i class="fas fa-file-download"></i></span></div>          
+          <div><span>Einkaufliste Teilen <i class="fas fa-file-export"></i></span></div>
+          <div><span>Login <i class="fas fa-user"></i></span></div>
+          <div><span>Hilfe <i class="fas fa-info-circle"></i></span></div>
         </div>      
       </div>
     </transition>
@@ -41,6 +41,7 @@
 export default {
   data(){
     return{
+      listID:'',
       items:[
         {
           item: 'Milch',
@@ -79,6 +80,8 @@ export default {
   },
   methods:{
     syncData(){
+      this.listID = this.makeUniqueID()
+      history.pushState({}, '', '?'+this.listID)
       let vm = this
       this.statusSyncData = true
       setTimeout(() => {
@@ -100,11 +103,12 @@ export default {
     },
     checkItem(index){
       if (this.items[index].status == 'unchecked'){
-        this.items[index].status = 'checked'        
+        this.items[index].status = 'checked'     
       }  else {
-        this.items[index].status = 'unchecked'
+        this.items[index].status = 'unchecked'       
       }
       
+      this.items[index].timestamp = new Date().toJSON() 
       this.syncDataLocal()
 
       let vm=this
@@ -141,7 +145,7 @@ export default {
     emptyList(){
       this.removeDataLocal()
       this.items=[]
-      this.showMenu=false
+      this.showMenu=false  
     },
     removeChecked(){
       this.checkedToBottom()
@@ -174,7 +178,16 @@ export default {
       if(e.target.className == 'modal'){
         this.showMenu = !this.showMenu
       }      
-    }    
+    },
+    makeUniqueID(){
+      let text = "";
+      let possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+      for (let i = 0; i < 8; i++)
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+      return text + new Date().getTime().toString(36);
+    }   
   },
   watch:{
     newItemInput: function(val) {
