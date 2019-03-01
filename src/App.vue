@@ -95,36 +95,40 @@ export default {
   },
   methods:{
     createList(data){
-      axios.post('../php/updateList.php', data)
+      let vm = this
+      axios.post('./php/updateList.php', data)
         .then(res => {
-          console.log(res)
-          localStorage.setItem('listID', this.list.ID)
-          history.pushState({}, '', '?' + this.list.ID)
-          localStorage.setItem('lastUpdate', this.list.timestamp)
-          this.statusSyncData = false
+          console.log(res, data, vm.list.ID, vm.list.timestamp)
+          localStorage.setItem('listID', vm.list.ID)
+          history.pushState({}, '', '?' + vm.list.ID)
+          localStorage.setItem('lastUpdate', vm.list.timestamp)
+          vm.statusSyncData = false
         })
         .catch(error => {
           console.log(error)
+          this.statusSyncData = false
         })
     },
     updateList(data){
-      axios.post('../php/updateList.php', data)
+      axios.post('./php/updateList.php', data)
         .then(res => {
           console.log(res)
           this.statusSyncData = false
         })
         .catch(error => {
           console.log(error)
+          this.statusSyncData = false
         })
     },
     getList(listID){
-      axios.get('../lists/'+listID+'.json')
+      axios.get('./lists/'+listID+'.json')
         .then(res => {
           console.log(res)
           this.statusSyncData = false
         })
         .catch(error => {
           console.log(error)
+          this.statusSyncData = false
         })
     },
     syncData(){
