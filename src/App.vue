@@ -12,7 +12,7 @@
       </div>
       <div class="liste">
         <transition-group name="main-list" tag="ul">>
-          <li v-for="(item, index) in items" @click="checkItem(index)" :key="item.timestamp" :class="{'checked':items[index].status=='checked'}"> {{ item.item }} - ( {{items[index].quantity}} ) </li>
+          <li v-for="(item, index) in list.items" @click="checkItem(index)" :key="item.ID" :class="{'checked':item.status=='checked'}"> {{ item.item }} - ( {{item.quantity}} ) </li>
         </transition-group>
       </div>
       <div>
@@ -38,33 +38,42 @@
 </template>
 
 <script>
+import axios from 'axios'
 export default {
   data(){
     return{
-      listID:'',
-      items:[
-        {
-          item: 'Milch',
-          quantity: 1,
-          timestamp: '1',
-          userID:'',
-          status: 'unchecked'
-        },
-        {
-          item: 'Brot',
-          quantity: 2,
-          timestamp: '2',
-          userID:'',
-          status: 'unchecked'
-        },
-        {
-          item: 'Zucker',
-          quantity: 1,
-          timestamp: '3',
-          userID:'',
-          status: 'unchecked'
-        }
-      ],      
+      list:{
+        ID: false,
+        timestamp: false,
+        items:[
+          {
+            ID: '1',
+            item: 'Milch',
+            quantity: 1,
+            timestamp: '1',
+            userID:'',
+            status: 'unchecked'
+          },
+          {
+            ID: '2',
+            item: 'Brot',
+            quantity: 2,
+            timestamp: '2',
+            userID:'',
+            status: 'checked'
+          },
+          {
+            ID: '3',
+            item: 'Zucker',
+            quantity: 1,
+            timestamp: '3',
+            userID:'',
+            status: 'unchecked'
+          }
+        ]
+      },
+      
+            
       newItemInput:'',
       showMenu:false,
       showSync: true,
@@ -78,37 +87,83 @@ export default {
       console.log(document.hidden)
       }, false)
     if(localStorage.getItem('items')!=null){
-      this.items=JSON.parse(localStorage.getItem('items'))
+      this.list.items=JSON.parse(localStorage.getItem('items'))
     }
+    if(localStorage.getItem('listID')!=null){
+        this.list.ID=localStorage.getItem('listID')
+      }
   },
   methods:{
+    createList(data){
+      axios.post('../php/updateList.php', data)
+        .then(res => {
+          console.log(res)
+          localStorage.setItem('listID', this.list.ID)
+          history.pushState({}, '', '?' + this.list.ID)
+          localStorage.setItem('lastUpdate', this.list.timestamp)
+          this.statusSyncData = false
+        })
+        .catch(error => {
+          console.log(error)
+        })
+    },
+    updateList(data){
+      axios.post('../php/updateList.php', data)
+        .then(res => {
+          console.log(res)
+          this.statusSyncData = false
+        })
+        .catch(error => {
+          console.log(error)
+        })
+    },
+    getList(listID){
+      axios.get('../lists/'+listID+'.json')
+        .then(res => {
+          console.log(res)
+          this.statusSyncData = false
+        })
+        .catch(error => {
+          console.log(error)
+        })
+    },
     syncData(){
-      this.listID = this.makeUniqueID()
-      history.pushState({}, '', '?'+this.listID)
-      let vm = this
       this.statusSyncData = true
-      setTimeout(() => {
-        this.statusSyncData = false
-      },1200)
+      if(!this.list.ID) {
+        this.list.ID = this.makeUniqueID()
+        this.list.timestamp = new Date().toJSON()
+        this.createList(this.list);
+      } else {
+        this.getList(this.list.ID)
+      }
+      
+      
+      
+      // history.pushState({}, '', '?'+this.list.ID)
+      // let vm = this
+      // this.statusSyncData = true
+      // setTimeout(() => {
+      //   this.statusSyncData = false
+      // },1200)
     },
     syncDataLocal(){
-      localStorage.setItem('items', JSON.stringify(this.items))
+      localStorage.setItem('items', JSON.stringify(this.list.items))
     },
     removeDataLocal(){
       localStorage.removeItem('items');
     },
     removeItem(index){      
-      if(this.items[index].status == 'checked'){
-        this.items.splice(index, 1)
+      if(this.list.items[index].status == 'checked'){
+        this.list.items.splice(index, 1)
         this.syncDataLocal()
         return
       }
     },
     checkItem(index){
-      if (this.items[index].status == 'unchecked'){
-        this.items[index].status = 'checked' 
+      if (this.list.items[index].status == 'unchecked'){
+        this.list.items[index].status = 'checked' 
       }  else {
-        this.items[index].status = 'unchecked'       
+        this.list.items[index].status = 'unchecked'       
       }
       
       // this.items[index].timestamp = new Date().toJSON() 
@@ -133,6 +188,7 @@ export default {
     addItem(){
       if(this.newItemInput == ''){ return }
       let newItem={
+        ID:'',
         item:'',
         quantity: 1,
         timestamp:'',
@@ -140,21 +196,22 @@ export default {
         status: 'unchecked'
       }
       newItem.item = this.newItemInput
-      newItem.timestamp= new Date().toJSON()
-      this.items.unshift(newItem)
+      newItem.timestamp = new Date().toJSON()
+      newItem.ID = this.makeUniqueID()
+      this.list.items.unshift(newItem)
       this.newItemInput = ''  
       this.syncDataLocal()
     },
     emptyList(){
       this.removeDataLocal()
-      this.items=[]
+      this.list.items=[]
       this.showMenu=false  
     },
     removeChecked(){
       this.checkedToBottom()
-      let firstCheckedIndex = this.items.findIndex(firstChecked)
+      let firstCheckedIndex = this.list.items.findIndex(firstChecked)
       if (firstCheckedIndex != -1){
-        this.items.splice(firstCheckedIndex, this.items.length)
+        this.list.items.splice(firstCheckedIndex, this.list.items.length)
       }
       function firstChecked(object){
         return object.status == 'checked'
@@ -163,7 +220,7 @@ export default {
       this.showMenu=false
     },
     checkedToBottom(){
-      this.items.sort(compareStatus)
+      this.list.items.sort(compareStatus)
       function compareStatus(a,b){
         if (a.status < b.status)
           return 1;
@@ -175,7 +232,7 @@ export default {
       this.showMenu=false
     },
     shuffle(){
-      this.items = _.shuffle(this.items)
+      this.list.items = _.shuffle(this.list.items)
     },
     modal(e){
       if(e.target.className == 'modal'){
