@@ -85,21 +85,36 @@ export default {
     }
   },
   created(){
+    let items = localStorage.getItem('items')
+    let listID = localStorage.getItem('listID')
+    let lastUpdate = localStorage.getItem('lastUpdate')
+    let changes = localStorage.getItem('changes')
+    
+    if (location.search!=''){
+      let query = location.search
+      this.list.ID = query.slice(1, query.length)
+      if (listID != this.list.ID){
+        this.removeDataLocal()//empty local storage
+        this.syncData()
+      }
+    }
+    if(items!=null){
+      this.list.items=JSON.parse(items)
+    }
+    if(listID!=null){
+      this.list.ID=listID
+        this.syncData()
+      }
+    if(lastUpdate!=null){
+      this.list.timestamp=lastUpdate
+      }
+    if(changes!=null){
+      this.changesCount=changes
+      }
+    
     document.addEventListener("visibilitychange", () => {
       // console.log(document.hidden)
       }, false)
-    if(localStorage.getItem('items')!=null){
-      this.list.items=JSON.parse(localStorage.getItem('items'))
-    }
-    if(localStorage.getItem('listID')!=null){
-        this.list.ID=localStorage.getItem('listID')
-      }
-    if(localStorage.getItem('lastUpdate')!=null){
-        this.list.timestamp=localStorage.getItem('lastUpdate')
-      }
-    if(localStorage.getItem('changes')!=null){
-        this.changesCount=localStorage.getItem('changes')
-      }
   },
   methods:{
     createList(data){
@@ -110,7 +125,7 @@ export default {
           history.pushState({}, '', '?' + this.list.ID)
           localStorage.setItem('lastUpdate', this.list.timestamp)
           this.syncStatus = 'List created and updated'
-          vm.statusSyncData = false
+          this.statusSyncData = false
         })
         .catch(error => {
           console.log(error)
@@ -144,7 +159,7 @@ export default {
 
           let serverTimestamp = new Date(res.data.timestamp).getTime()
           let lastUpdate = new Date(this.list.timestamp).getTime()
-
+          
           //check for updates
           if(lastUpdate == serverTimestamp && this.changesCount == 0){
             console.log('check for updates')
@@ -160,13 +175,15 @@ export default {
             return
           }
 
-          //third party changes
-          if(lastUpdate < serverTimestamp && this.changesCount == 0){
-            console.log('third party changes')
+          //third party changes or shared list
+          if((lastUpdate < serverTimestamp && this.changesCount == 0 || !this.list.timestamp)){
+            console.log('third party changes or shared list')
             this.list.items = res.data.items            
             localStorage.setItem('items', JSON.stringify(this.list.items))
             this.list.timestamp = res.data.timestamp
-            localStorage.setItem('lastUpdate', vm.list.timestamp)
+            localStorage.setItem('lastUpdate', this.list.timestamp)
+            this.list.ID = res.data.ID
+            localStorage.setItem('listID', this.list.ID)
             this.statusSyncData = false
             return
           }
@@ -308,6 +325,9 @@ export default {
     },
     removeDataLocal(){
       localStorage.removeItem('items');
+      localStorage.removeItem('changes');
+      localStorage.removeItem('lastUpdated')
+      localStorage.removeItem('listID')
     },
     removeItem(index){      
       if(this.list.items[index].status == 'checked'){
@@ -337,6 +357,8 @@ export default {
         vm.clicked=0
         if(index == vm.itemIndexTmp){
           vm.itemIndexTmp = ''
+          vm.changesCount--
+          vm.changesCount--
           vm.removeItem(index)
         }
         
