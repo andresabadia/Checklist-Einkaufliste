@@ -9,6 +9,7 @@
           <button @click="addItem" v-else><i class="fas fa-plus"></i></button>
           <button @click="showMenu = !showMenu"><i class="fas fa-ellipsis-v"></i></button>    
         </div>
+        <div> {{syncStatus}} </div>
       </div>
       <div class="liste">
         <transition-group name="main-list" tag="ul">>
@@ -73,24 +74,31 @@ export default {
         ]
       },
       
-            
+      changesCount: 0,      
       newItemInput:'',
       showMenu:false,
       showSync: true,
       statusSyncData: false,
+      syncStatus:'uptodate',
       clicked: 0,
       itemIndexTmp: ''
     }
   },
   created(){
     document.addEventListener("visibilitychange", () => {
-      console.log(document.hidden)
+      // console.log(document.hidden)
       }, false)
     if(localStorage.getItem('items')!=null){
       this.list.items=JSON.parse(localStorage.getItem('items'))
     }
     if(localStorage.getItem('listID')!=null){
         this.list.ID=localStorage.getItem('listID')
+      }
+    if(localStorage.getItem('lastUpdate')!=null){
+        this.list.timestamp=localStorage.getItem('lastUpdate')
+      }
+    if(localStorage.getItem('changes')!=null){
+        this.changesCount=localStorage.getItem('changes')
       }
   },
   methods:{
@@ -102,10 +110,14 @@ export default {
           localStorage.setItem('listID', vm.list.ID)
           history.pushState({}, '', '?' + vm.list.ID)
           localStorage.setItem('lastUpdate', vm.list.timestamp)
+          this.syncStatus = 'List created and updated'
           vm.statusSyncData = false
         })
         .catch(error => {
           console.log(error)
+          this.list.ID = false
+          this.list.timestamp = false
+          this.syncStatus = 'Something went wrong'
           this.statusSyncData = false
         })
     },
@@ -113,10 +125,15 @@ export default {
       axios.post('./php/updateList.php', data)
         .then(res => {
           console.log(res)
+          localStorage.setItem('lastUpdate', this.list.timestamp)
+          this.changesCount = 0
+          this.syncStatus = 'Update successful'
           this.statusSyncData = false
         })
         .catch(error => {
           console.log(error)
+          this.list.timestamp = localStorage.getItem('lastUpdate')
+          this.syncStatus = 'Update failed'
           this.statusSyncData = false
         })
     },
@@ -124,6 +141,32 @@ export default {
       axios.get('./lists/'+listID+'.json')
         .then(res => {
           console.log(res)
+
+          let serverTimestamp = new Date(res.data.timestamp)
+          let lastUpdate = new Date(this.list.timestamp)
+
+          //check for updates
+          if(lastUpdate == serverTimestamp && this.changesCount == 0){
+            return
+          }
+
+          //local changes
+          if(lastUpdate == serverTimestamp && this.changesCount != 0){
+            this.list.timestamp = new Date().toJSON()
+            this.updateList(this.list)
+            return
+          }
+
+          //third party changes
+          if(lastUpdate < serverTimestamp && this.changesCount == 0){
+            this.list.items = res.data.items            
+            localStorage.setItem('items', JSON.stringify(this.list.items))
+            this.list.timestamp = res.data.timestamp
+            localStorage.setItem('lastUpdate', vm.list.timestamp)
+          }
+
+          //local changes and third party changes
+
           this.statusSyncData = false
         })
         .catch(error => {
@@ -136,11 +179,11 @@ export default {
       if(!this.list.ID) {
         this.list.ID = this.makeUniqueID()
         this.list.timestamp = new Date().toJSON()
-        this.createList(this.list);
+        this.createList(this.list)
+        return
       } else {
         this.getList(this.list.ID)
       }
-      
       
       
       // history.pushState({}, '', '?'+this.list.ID)
@@ -151,6 +194,8 @@ export default {
       // },1200)
     },
     syncDataLocal(){
+      this.changesCount++
+      localStorage.setItem('changes', this.changesCount)
       localStorage.setItem('items', JSON.stringify(this.list.items))
     },
     removeDataLocal(){
@@ -190,6 +235,7 @@ export default {
       }           
     },
     addItem(){
+      this.showSync = true
       if(this.newItemInput == ''){ return }
       let newItem={
         ID:'',
@@ -207,8 +253,8 @@ export default {
       this.syncDataLocal()
     },
     emptyList(){
-      this.removeDataLocal()
       this.list.items=[]
+      this.syncDataLocal()
       this.showMenu=false  
     },
     removeChecked(){
