@@ -173,7 +173,9 @@ export default {
 
           //local changes and third party changes
           if(lastUpdate < serverTimestamp && this.changesCount != 0){
+            console.log('local and third party changes')
             this.compareChanges(res.data.items, this.list.items, [], lastUpdate,serverTimestamp)
+            return
           }
           this.statusSyncData = false
         })
@@ -191,13 +193,16 @@ export default {
               serverList.splice(i, 1)
               localList.splice(j, 1)
               if (serverList.length > 0){
-                compareChanges(serverList, localList, newList)
+                this.compareChanges(serverList, localList, newList)
                 return
-              } else { // serverlist empty
+              } else { 
+                // serverlist empty
                 if (localList.length > 0){
                   this.compareLocalChanges(localList, newList, serverTimestamp)
                 } else {
-                  // END pass newList
+                  this.list.items = newList
+                  this.list.timestamp = new Date().toJSON()
+                  this.updateList(this.list) // pass newList
                 }               
                 return
               }
@@ -207,10 +212,17 @@ export default {
               serverList.splice(i, 1)
               localList.splice(j, 1)
               if (serverList.length > 0){
-                compareChanges(serverList, localList, newList)
+                this.compareChanges(serverList, localList, newList)
                 return
               } else {
                 // serverlist empty
+                if (localList.length > 0){
+                  this.compareLocalChanges(localList, newList, serverTimestamp)
+                } else {
+                  this.list.items = newList
+                  this.list.timestamp = new Date().toJSON()
+                  this.updateList(this.list) // pass newList
+                }  
                 return
               }
             }
@@ -218,33 +230,54 @@ export default {
           // item dont exist in local
           if (new Date(serverList[i].timestamp).getTime() > lastUpdate) {
             newList.unshift(serverList[i])
-            serverList.splice(i,1)
+            serverList.splice(i, 1)
             if (serverList.length > 0){
-                compareChanges(serverList, localList, newList)
+                this.compareChanges(serverList, localList, newList)
                 return
               } else {
                 // serverlist empty
+                if (localList.length > 0){
+                  this.compareLocalChanges(localList, newList, serverTimestamp)
+                } else {
+                  this.list.items = newList
+                  this.list.timestamp = new Date().toJSON()
+                  this.updateList(this.list) // pass newList
+                }  
                 return
               }
           } else {
-            serverList.splice(i,1)
+            serverList.splice(i, 1)
             if (serverList.length > 0){
-                compareChanges(serverList, localList, newList)
+                this.compareChanges(serverList, localList, newList)
                 return
               } else {
                 // serverlist empty
+                if (localList.length > 0){
+                  this.compareLocalChanges(localList, newList, serverTimestamp)
+                } else {
+                  this.list.items = newList
+                  this.list.timestamp = new Date().toJSON()
+                  this.updateList(this.list) // pass newList
+                }  
                 return
               }
           }          
         }
       }
     },
-    compareLastChanges(list, newList, timestamp){
-      for (let i = 0; i < list.length; i++) {
-        if (new Date(list[i].timestamp).getTime() > timestamp) {
-          //new item
-        } else {
-          //deleted item
+    compareLocalChanges(localList, newList, serverTimestamp){
+      for (let i=0; i < localList.length; i++){
+        if(new Date(localList[i].timestamp).getTime().timestamp > serverTimestamp){
+          newList.unshift(localList[i])
+          localList.splice(i,1)
+          if (localList.length > 0) {
+            compareLocalChanges(localList, newList, serverTimestamp)
+            return
+          } else {
+            this.list.items = newList
+            this.list.timestamp = new Date().toJSON()
+            this.updateList(this.list) // pass newList
+          }
         }
       }
     },
