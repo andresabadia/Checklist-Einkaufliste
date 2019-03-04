@@ -7,9 +7,9 @@
           <input type="text" placeholder="z.B. Milch"  v-model="newItemInput" @keyup.enter="addItem" @input="newItemInputCheck">
           <button @click="syncData" v-if="showSync"><i class="fas fa-sync" :class="{'synchronizing':statusSyncData}"></i></button> 
           <button @click="addItem" v-else><i class="fas fa-plus"></i></button>
-          <button @click="showMenu = !showMenu"><i class="fas fa-ellipsis-v"></i></button>    
+          <button @click="showMenu = !showMenu"><i class="fas fa-ellipsis-v"></i></button>
+          <div class="sync-status"> {{syncStatus}} </div>    
         </div>
-        <div> {{syncStatus}} </div>
       </div>
       <div class="liste">
         <transition-group name="main-list" tag="ul">>
@@ -79,7 +79,7 @@ export default {
       showMenu:false,
       showSync: true,
       statusSyncData: false,
-      syncStatus:'uptodate',
+      syncStatus:'',
       clicked: 0,
       itemIndexTmp: ''
     }
@@ -103,13 +103,12 @@ export default {
   },
   methods:{
     createList(data){
-      let vm = this
       axios.post('./php/updateList.php', data)
         .then(res => {
-          console.log(res, data, vm.list.ID, vm.list.timestamp)
-          localStorage.setItem('listID', vm.list.ID)
-          history.pushState({}, '', '?' + vm.list.ID)
-          localStorage.setItem('lastUpdate', vm.list.timestamp)
+          console.log(res, data, this.list.ID, this.list.timestamp)
+          localStorage.setItem('listID', this.list.ID)
+          history.pushState({}, '', '?' + this.list.ID)
+          localStorage.setItem('lastUpdate', this.list.timestamp)
           this.syncStatus = 'List created and updated'
           vm.statusSyncData = false
         })
@@ -173,14 +172,81 @@ export default {
           }
 
           //local changes and third party changes
-          if(lastUpdate < serverTimestamp && this.changesCount != 0)
-
+          if(lastUpdate < serverTimestamp && this.changesCount != 0){
+            this.compareChanges(res.data.items, this.list.items, [], lastUpdate,serverTimestamp)
+          }
           this.statusSyncData = false
         })
         .catch(error => {
           console.log(error)
           this.statusSyncData = false
         })
+    },
+    compareChanges(serverList, localList, newList, lastUpdate, serverTimestamp){
+      for (let i = 0; i < serverList.length; i++){
+        for (let j = 0; j < localList.length; j++){
+          if (serverList[i].ID == localList[j].ID) { // check if server item exist in local
+            if (serverList[i].status == localList[j].status){ // check if status are the same it means no changes where made
+              newList.push(serverList[i]) // No Changes
+              serverList.splice(i, 1)
+              localList.splice(j, 1)
+              if (serverList.length > 0){
+                compareChanges(serverList, localList, newList)
+                return
+              } else { // serverlist empty
+                if (localList.length > 0){
+                  this.compareLocalChanges(localList, newList, serverTimestamp)
+                } else {
+                  // END pass newList
+                }               
+                return
+              }
+            } else { // status are not the same it means changes where made checked has priority!
+              serverList[i].status = 'checked' 
+              newList.push(serverList[i])
+              serverList.splice(i, 1)
+              localList.splice(j, 1)
+              if (serverList.length > 0){
+                compareChanges(serverList, localList, newList)
+                return
+              } else {
+                // serverlist empty
+                return
+              }
+            }
+          }
+          // item dont exist in local
+          if (new Date(serverList[i].timestamp).getTime() > lastUpdate) {
+            newList.unshift(serverList[i])
+            serverList.splice(i,1)
+            if (serverList.length > 0){
+                compareChanges(serverList, localList, newList)
+                return
+              } else {
+                // serverlist empty
+                return
+              }
+          } else {
+            serverList.splice(i,1)
+            if (serverList.length > 0){
+                compareChanges(serverList, localList, newList)
+                return
+              } else {
+                // serverlist empty
+                return
+              }
+          }          
+        }
+      }
+    },
+    compareLastChanges(list, newList, timestamp){
+      for (let i = 0; i < list.length; i++) {
+        if (new Date(list[i].timestamp).getTime() > timestamp) {
+          //new item
+        } else {
+          //deleted item
+        }
+      }
     },
     syncData(){
       this.statusSyncData = true
@@ -203,6 +269,7 @@ export default {
     },
     syncDataLocal(){
       this.changesCount++
+      this.syncStatus = 'last changes: ' + this.changesCount
       localStorage.setItem('changes', this.changesCount)
       localStorage.setItem('items', JSON.stringify(this.list.items))
     },
@@ -370,6 +437,7 @@ html, body{
   display: flex;
   justify-content: center;
 }
+.input {position: relative;}
 input{
   height: 35px;
   max-width: 400px;
@@ -419,6 +487,18 @@ button:focus{
 }
 .fa-ellipsis-v, .fa-sync{
   color:#6b6b6b;
+}
+.sync-status{
+  position: absolute;
+  bottom: -45px;
+  width: 50%;
+  height: 40px;
+  line-height: 1.2;
+  max-width: 400px;
+  text-align: right;
+  font-size: smaller;
+  overflow: hidden;
+  color:#a5a5a5;
 }
 ul{  
   padding: 0;
