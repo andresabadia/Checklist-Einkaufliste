@@ -4,7 +4,7 @@
       <div class="top">
         <div class="title">Einkaufliste</div>
         <div class="input">
-          <input type="text" placeholder="z.B. Milch"  v-model="newItemInput" @keyup.enter="addItem">
+          <input type="text" placeholder="z.B. Milch"  v-model="newItemInput" @keyup.enter="addItem" @input="newItemInputCheck">
           <button @click="syncData" v-if="showSync"><i class="fas fa-sync" :class="{'synchronizing':statusSyncData}"></i></button> 
           <button @click="addItem" v-else><i class="fas fa-plus"></i></button>
           <button @click="showMenu = !showMenu"><i class="fas fa-ellipsis-v"></i></button>    
@@ -251,10 +251,9 @@ export default {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
 
       return text + new Date().getTime().toString(36);
-    }   
-  },
-  watch:{
-    newItemInput: function(val) {
+    },
+     newItemInputCheck(e){
+      let val = e.target.value
       if (val == '') {
         this.showSync = true
       } else {
