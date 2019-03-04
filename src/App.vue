@@ -127,6 +127,7 @@ export default {
           console.log(res)
           localStorage.setItem('lastUpdate', this.list.timestamp)
           this.changesCount = 0
+          localStorage.setItem('changes', this.changesCount)
           this.syncStatus = 'Update successful'
           this.statusSyncData = false
         })
@@ -140,18 +141,21 @@ export default {
     getList(listID){
       axios.get('./lists/'+listID+'.json')
         .then(res => {
-          console.log(res)
+          console.log('server', res.data.timestamp, 'local', this.list.timestamp)
 
-          let serverTimestamp = new Date(res.data.timestamp)
-          let lastUpdate = new Date(this.list.timestamp)
+          let serverTimestamp = new Date(res.data.timestamp).getTime()
+          let lastUpdate = new Date(this.list.timestamp).getTime()
 
           //check for updates
           if(lastUpdate == serverTimestamp && this.changesCount == 0){
+            console.log('check for updates')
+            this.statusSyncData = false
             return
           }
 
           //local changes
           if(lastUpdate == serverTimestamp && this.changesCount != 0){
+            console.log('local changes')
             this.list.timestamp = new Date().toJSON()
             this.updateList(this.list)
             return
@@ -159,13 +163,17 @@ export default {
 
           //third party changes
           if(lastUpdate < serverTimestamp && this.changesCount == 0){
+            console.log('third party changes')
             this.list.items = res.data.items            
             localStorage.setItem('items', JSON.stringify(this.list.items))
             this.list.timestamp = res.data.timestamp
             localStorage.setItem('lastUpdate', vm.list.timestamp)
+            this.statusSyncData = false
+            return
           }
 
           //local changes and third party changes
+          if(lastUpdate < serverTimestamp && this.changesCount != 0)
 
           this.statusSyncData = false
         })
