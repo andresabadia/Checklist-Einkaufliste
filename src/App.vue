@@ -95,6 +95,8 @@ export default {
       this.list.ID = query.slice(1, query.length)
       if (listID != this.list.ID){
         this.removeDataLocal()//empty local storage
+        this.list.timestamp=0
+        this.changesCount=0
         this.syncData()
       }
     }
@@ -103,7 +105,10 @@ export default {
     }
     if(listID!=null){
       this.list.ID=listID
-        this.syncData()
+      if(location.search==''){
+        history.pushState({}, '', '?' + this.list.ID)
+      }
+      this.syncData()
       }
     if(lastUpdate!=null){
       this.list.timestamp=lastUpdate
@@ -202,10 +207,12 @@ export default {
         })
     },
     compareChanges(serverList, localList, newList, lastUpdate, serverTimestamp){
+      
       for (let i = 0; i < serverList.length; i++){
         for (let j = 0; j < localList.length; j++){
           if (serverList[i].ID == localList[j].ID) { // check if server item exist in local
             if (serverList[i].status == localList[j].status){ // check if status are the same it means no changes where made
+              console.log("same item and status ", serverList[i], localList[i])
               newList.push(serverList[i]) // No Changes
               serverList.splice(i, 1)
               localList.splice(j, 1)
@@ -216,14 +223,17 @@ export default {
                 // serverlist empty
                 if (localList.length > 0){
                   this.compareLocalChanges(localList, newList, serverTimestamp)
+                  return
                 } else {
+                  console.log("Ende1", newList)
                   this.list.items = newList
                   this.list.timestamp = new Date().toJSON()
                   this.updateList(this.list) // pass newList
-                }               
-                return
+                  return
+                }    
               }
             } else { // status are not the same it means changes where made checked has priority!
+              console.log("same item different status", serverList[i], localList[i])
               serverList[i].status = 'checked' 
               newList.push(serverList[i])
               serverList.splice(i, 1)
@@ -235,17 +245,20 @@ export default {
                 // serverlist empty
                 if (localList.length > 0){
                   this.compareLocalChanges(localList, newList, serverTimestamp)
+                  return
                 } else {
+                  console.log("Ende2", newList)
                   this.list.items = newList
                   this.list.timestamp = new Date().toJSON()
                   this.updateList(this.list) // pass newList
-                }  
-                return
+                  return
+                }                  
               }
             }
           }
           // item dont exist in local
-          if (new Date(serverList[i].timestamp).getTime() > lastUpdate) {
+          else if (new Date(serverList[i].timestamp).getTime() > lastUpdate) {
+            console.log("item has been added by 3rd party", serverList[i])
             newList.unshift(serverList[i])
             serverList.splice(i, 1)
             if (serverList.length > 0){
@@ -255,15 +268,18 @@ export default {
                 // serverlist empty
                 if (localList.length > 0){
                   this.compareLocalChanges(localList, newList, serverTimestamp)
+                  return
                 } else {
+                  console.log("Ende3", newList)
                   this.list.items = newList
                   this.list.timestamp = new Date().toJSON()
                   this.updateList(this.list) // pass newList
-                }  
-                return
+                  return
+                }                  
               }
           } else {
-            serverList.splice(i, 1)
+            console.log("item has been removed locally", serverList[i])
+            serverList.splice(i, 1)            
             if (serverList.length > 0){
                 this.compareChanges(serverList, localList, newList)
                 return
@@ -271,12 +287,14 @@ export default {
                 // serverlist empty
                 if (localList.length > 0){
                   this.compareLocalChanges(localList, newList, serverTimestamp)
+                  return
                 } else {
+                  console.log("Ende4", newList)
                   this.list.items = newList
                   this.list.timestamp = new Date().toJSON()
                   this.updateList(this.list) // pass newList
+                  return
                 }  
-                return
               }
           }          
         }
@@ -285,15 +303,31 @@ export default {
     compareLocalChanges(localList, newList, serverTimestamp){
       for (let i=0; i < localList.length; i++){
         if(new Date(localList[i].timestamp).getTime().timestamp > serverTimestamp){
+          console.log("item has been added locally", localList[i])
           newList.unshift(localList[i])
           localList.splice(i,1)
           if (localList.length > 0) {
             compareLocalChanges(localList, newList, serverTimestamp)
             return
           } else {
+            console.log("Ende5", newList)
             this.list.items = newList
             this.list.timestamp = new Date().toJSON()
             this.updateList(this.list) // pass newList
+            return
+          }
+        } else {
+          console.log("item has been removed by 3rd Party")
+          localList.splice(i,1)
+          if (localList.length > 0) {
+            compareLocalChanges(localList, newList, serverTimestamp)
+            return
+          } else {
+            console.log("Ende6", newList)
+            this.list.items = newList
+            this.list.timestamp = new Date().toJSON()
+            this.updateList(this.list) // pass newList
+            return
           }
         }
       }
@@ -307,8 +341,7 @@ export default {
         return
       } else {
         this.getList(this.list.ID)
-      }
-      
+      }      
       
       // history.pushState({}, '', '?'+this.list.ID)
       // let vm = this
@@ -360,8 +393,7 @@ export default {
           vm.changesCount--
           vm.changesCount--
           vm.removeItem(index)
-        }
-        
+        }        
       }           
     },
     addItem(){
@@ -440,9 +472,7 @@ export default {
 }
 </script>
 
-
 <style>
-
 .checked{
   color: #b5b5b5;
 }
@@ -471,7 +501,6 @@ export default {
 .main-list-leave-active {
   position: absolute;
 }
-
 html, body{
   font-family: 'Gloria Hallelujah', cursive;
   margin: 0;
@@ -505,7 +534,6 @@ input{
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 25px 50px 0 rgba(0, 0, 0, 0.1);
   background: whitesmoke;
   color:#676767;
-
 }
 input:focus{
   outline: none;
@@ -606,5 +634,4 @@ li{
   width: 200%;
   transform: translateX(150px);
 }
-
 </style>
