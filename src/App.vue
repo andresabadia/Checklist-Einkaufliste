@@ -28,6 +28,7 @@
           <div><span @click="removeChecked">Gekaufte Löschen <i class="fas fa-trash-alt"></i></span></div>  
           <div><span @click="checkedToBottom">Gekauft nach unten <i class="fas fa-file-download"></i></span></div>         
           <div><span>Einkaufliste Teilen <i class="fas fa-file-export"></i></span></div>
+          <hr>
           <div><span>Neue Liste <i class="fas fa-file-medical"></i></span></div>
           <div><span>Login <i class="fas fa-user"></i></span></div>
           <div><span>Hilfe <i class="fas fa-info-circle"></i></span></div>
@@ -160,7 +161,7 @@ export default {
     getList(listID){
       axios.get('./lists/'+listID+'.json')
         .then(res => {
-          console.log('server', res.data.timestamp, 'local', this.list.timestamp)
+          console.log('server: ' + res.data.timestamp +  'local: ' + this.list.timestamp)
 
           let serverTimestamp = new Date(res.data.timestamp).getTime()
           let lastUpdate = new Date(this.list.timestamp).getTime()
@@ -196,7 +197,7 @@ export default {
           //local changes and third party changes
           if(lastUpdate < serverTimestamp && this.changesCount != 0){
             console.log('local and third party changes')
-            this.compareChanges(res.data.items, this.list.items, [], lastUpdate,serverTimestamp)
+            this.compareChanges(res.data.items, this.list.items, [], lastUpdate, serverTimestamp)
             return
           }
           this.statusSyncData = false
@@ -212,17 +213,17 @@ export default {
         for (let j = 0; j < localList.length; j++){
           if (serverList[i].ID == localList[j].ID) { // check if server item exist in local
             if (serverList[i].status == localList[j].status){ // check if status are the same it means no changes where made
-              console.log("same item and status ", serverList[i], localList[i])
+              console.log("same item and status ", serverList[i], localList[j])
               newList.push(serverList[i]) // No Changes
               serverList.splice(i, 1)
               localList.splice(j, 1)
               if (serverList.length > 0){
-                this.compareChanges(serverList, localList, newList)
+                this.compareChanges(serverList, localList, newList, lastUpdate, serverTimestamp)
                 return
               } else { 
                 // serverlist empty
                 if (localList.length > 0){
-                  this.compareLocalChanges(localList, newList, serverTimestamp)
+                  this.compareLocalChanges(localList, newList, lastUpdate)
                   return
                 } else {
                   console.log("Ende1", newList)
@@ -233,18 +234,18 @@ export default {
                 }    
               }
             } else { // status are not the same it means changes where made checked has priority!
-              console.log("same item different status", serverList[i], localList[i])
+              console.log("same item different status", serverList[i], localList[j])
               serverList[i].status = 'checked' 
               newList.push(serverList[i])
               serverList.splice(i, 1)
               localList.splice(j, 1)
               if (serverList.length > 0){
-                this.compareChanges(serverList, localList, newList)
+                this.compareChanges(serverList, localList, newList, lastUpdate, serverTimestamp)
                 return
               } else {
                 // serverlist empty
                 if (localList.length > 0){
-                  this.compareLocalChanges(localList, newList, serverTimestamp)
+                  this.compareLocalChanges(localList, newList, lastUpdate)
                   return
                 } else {
                   console.log("Ende2", newList)
@@ -256,58 +257,58 @@ export default {
               }
             }
           }
-          // item dont exist in local
-          else if (new Date(serverList[i].timestamp).getTime() > lastUpdate) {
-            console.log("item has been added by 3rd party", serverList[i])
-            newList.unshift(serverList[i])
-            serverList.splice(i, 1)
-            if (serverList.length > 0){
-                this.compareChanges(serverList, localList, newList)
+        }
+        // item dont exist in local
+        if (new Date(serverList[i].timestamp).getTime() > lastUpdate) {
+          console.log("item has been added by 3rd party", serverList[i])
+          newList.unshift(serverList[i])
+          serverList.splice(i, 1)
+          if (serverList.length > 0){
+              this.compareChanges(serverList, localList, newList, lastUpdate, serverTimestamp)
+              return
+            } else {
+              // serverlist empty
+              if (localList.length > 0){
+                this.compareLocalChanges(localList, newList, lastUpdate)
                 return
               } else {
-                // serverlist empty
-                if (localList.length > 0){
-                  this.compareLocalChanges(localList, newList, serverTimestamp)
-                  return
-                } else {
-                  console.log("Ende3", newList)
-                  this.list.items = newList
-                  this.list.timestamp = new Date().toJSON()
-                  this.updateList(this.list) // pass newList
-                  return
-                }                  
-              }
+                console.log("Ende3", newList)
+                this.list.items = newList
+                this.list.timestamp = new Date().toJSON()
+                this.updateList(this.list) // pass newList
+                return
+              }                  
+            }
           } else {
-            console.log("item has been removed locally", serverList[i])
+            console.log("item has been removed locally", serverList[i], new Date(lastUpdate).toJSON())
             serverList.splice(i, 1)            
             if (serverList.length > 0){
-                this.compareChanges(serverList, localList, newList)
+              this.compareChanges(serverList, localList, newList, lastUpdate, serverTimestamp)
+              return
+            } else {
+              // serverlist empty
+              if (localList.length > 0){
+                this.compareLocalChanges(localList, newList, lastUpdate)
                 return
               } else {
-                // serverlist empty
-                if (localList.length > 0){
-                  this.compareLocalChanges(localList, newList, serverTimestamp)
-                  return
-                } else {
-                  console.log("Ende4", newList)
-                  this.list.items = newList
-                  this.list.timestamp = new Date().toJSON()
-                  this.updateList(this.list) // pass newList
-                  return
-                }  
-              }
-          }          
-        }
+                console.log("Ende4", newList)
+                this.list.items = newList
+                this.list.timestamp = new Date().toJSON()
+                this.updateList(this.list) // pass newList
+                return
+              }  
+            }
+          }  
       }
     },
-    compareLocalChanges(localList, newList, serverTimestamp){
+    compareLocalChanges(localList, newList, lastUpdate){
       for (let i=0; i < localList.length; i++){
-        if(new Date(localList[i].timestamp).getTime().timestamp > serverTimestamp){
+        if(new Date(localList[i].timestamp).getTime() > lastUpdate){
           console.log("item has been added locally", localList[i])
           newList.unshift(localList[i])
           localList.splice(i,1)
           if (localList.length > 0) {
-            compareLocalChanges(localList, newList, serverTimestamp)
+            this.compareLocalChanges(localList, newList, lastUpdate)
             return
           } else {
             console.log("Ende5", newList)
@@ -317,10 +318,10 @@ export default {
             return
           }
         } else {
-          console.log("item has been removed by 3rd Party")
+          console.log("item has been removed by 3rd Party", localList[i])
           localList.splice(i,1)
           if (localList.length > 0) {
-            compareLocalChanges(localList, newList, serverTimestamp)
+            this.compareLocalChanges(localList, newList, lastUpdate)
             return
           } else {
             console.log("Ende6", newList)
@@ -618,6 +619,10 @@ li{
   float: right;
   height: 100%;
   box-sizing: border-box;
+  overflow-y: scroll;
+}
+.modal-elemente>div{
+  margin: 10px 0
 }
 .modal-elemente>div>span{
   color:#f9f9f9;
