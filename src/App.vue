@@ -15,7 +15,7 @@
         <transition-group name="main-list" tag="ul">>
           <li v-for="(item, index) in list.items" @click="checkItem(index)" :key="item.ID" :class="{'checked':item.status=='checked'}"> {{ item.item }} - ( {{item.quantity}} ) </li>
         </transition-group>
-      </div>      
+      </div>    
     </div>
     <transition name="slide">
       <div class="modal" @click="modal" v-if="showMenu">
@@ -75,7 +75,6 @@ export default {
           }
         ]
       },
-      
       changesCount: 0,  //counter for locally made changes    
       newItemInput:'', // Input field where new items are added
       showMenu:false, // bool if menu is visible or not
@@ -389,19 +388,20 @@ export default {
       this.syncDataLocal()
 
       let vm=this
-      vm.clicked++
-      if(vm.clicked==1){
-        vm.itemIndexTmp = index
+      this.clicked++
+      if(this.clicked==1){
+        this.itemIndexTmp = index
         setTimeout(()=>{
-          vm.clicked=0
+          this.clicked=0
+          this.syncData()
         },300)
       }else{
-        vm.clicked=0
-        if(index == vm.itemIndexTmp){
-          vm.itemIndexTmp = ''
-          vm.changesCount--
-          vm.changesCount--
-          vm.removeItem(index)
+        this.clicked=0
+        if(index == this.itemIndexTmp){
+          this.itemIndexTmp = ''
+          this.changesCount--
+          this.changesCount--
+          this.removeItem(index)
         }        
       }           
     },
@@ -422,6 +422,7 @@ export default {
       this.list.items.unshift(newItem)
       this.newItemInput = ''  
       this.syncDataLocal()
+      this.syncData()
     },
     emptyList(){
       this.list.items=[]
@@ -439,6 +440,7 @@ export default {
       }
       this.syncDataLocal()
       this.showMenu=false
+      this.syncData()
     },
     checkedToBottom(){
       this.list.items.sort(compareStatus)
@@ -451,6 +453,7 @@ export default {
       }
       this.syncDataLocal()
       this.showMenu=false
+      this.syncData()
     },
     shareList(){      
       if (this.list.ID != false){
