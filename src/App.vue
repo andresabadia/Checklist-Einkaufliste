@@ -393,7 +393,7 @@ export default {
         this.itemIndexTmp = index
         setTimeout(()=>{
           this.clicked=0
-          this.syncData()
+          //this.syncData()
         },300)
       }else{
         this.clicked=0
@@ -422,7 +422,7 @@ export default {
       this.list.items.unshift(newItem)
       this.newItemInput = ''  
       this.syncDataLocal()
-      this.syncData()
+      //this.syncData()
     },
     emptyList(){
       this.list.items=[]
@@ -440,7 +440,7 @@ export default {
       }
       this.syncDataLocal()
       this.showMenu=false
-      this.syncData()
+      //this.syncData()
     },
     checkedToBottom(){
       this.list.items.sort(compareStatus)
@@ -453,7 +453,7 @@ export default {
       }
       this.syncDataLocal()
       this.showMenu=false
-      this.syncData()
+      //this.syncData()
     },
     shareList(){      
       if (this.list.ID != false){
