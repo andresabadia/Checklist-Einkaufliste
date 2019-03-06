@@ -4,7 +4,7 @@
       <div class="top">
         <div class="title">Einkaufliste</div>
         <div class="input">
-          <input type="text" placeholder="z.B. Milch"  v-model="newItemInput" @keyup.enter="addItem" @input="newItemInputCheck">
+          <input id="input" type="text" placeholder="z.B. Milch"  v-model="newItemInput" @keyup.enter="addItem" @input="newItemInputCheck">
           <button @click="syncData" v-if="showSync"><i class="fas fa-sync" :class="{'synchronizing':statusSyncData}"></i></button> 
           <button @click="addItem" v-else><i class="fas fa-plus"></i></button>
           <button @click="showMenu = !showMenu"><i class="fas fa-ellipsis-v"></i></button>
@@ -15,9 +15,6 @@
         <transition-group name="main-list" tag="ul">>
           <li v-for="(item, index) in list.items" @click="checkItem(index)" :key="item.ID" :class="{'checked':item.status=='checked'}"> {{ item.item }} - ( {{item.quantity}} ) </li>
         </transition-group>
-      </div>
-      <div>
-        {{newItemInput}}  
       </div>      
     </div>
     <transition name="slide">
@@ -27,14 +24,18 @@
           <div><span @click="emptyList">Liste Leeren <i class="far fa-file"></i></span></div>
           <div><span @click="removeChecked">Gekaufte Löschen <i class="fas fa-trash-alt"></i></span></div>  
           <div><span @click="checkedToBottom">Gekauft nach unten <i class="fas fa-file-download"></i></span></div>         
-          <div><span>Einkaufliste Teilen <i class="fas fa-file-export"></i></span></div>
+          <div><span @click="shareList">Einkaufliste Teilen <i class="fas fa-file-export"></i></span></div>
           <hr>
-          <div><span>Neue Liste <i class="fas fa-file-medical"></i></span></div>
-          <div><span>Login <i class="fas fa-user"></i></span></div>
-          <div><span>Hilfe <i class="fas fa-info-circle"></i></span></div>
-        </div>      
+          <div><span @click="listNew">Neue Liste <i class="fas fa-file-medical"></i></span></div>
+          <div><span @click="login">Login <i class="fas fa-user"></i></span></div>
+          <div><span @click="help">Hilfe <i class="fas fa-info-circle"></i></span></div>
+        </div>         
       </div>
     </transition>
+    <div class="share-link-parent" v-show="sharing"><input id="share-link" :class="{'share-link-hidden':shareLinkHide}" type="text" v-model="shareLink"></div>
+    <transition name="slide-up">
+      <div class="toast" v-if="showToast"><span>{{toastMessage}}</span></div>  
+    </transition>  
   </div>
       
 </template>
@@ -75,17 +76,23 @@ export default {
         ]
       },
       
-      changesCount: 0,      
-      newItemInput:'',
-      showMenu:false,
-      showSync: true,
-      statusSyncData: false,
-      syncStatus:'',
-      clicked: 0,
-      itemIndexTmp: ''
+      changesCount: 0,  //counter for locally made changes    
+      newItemInput:'', // Input field where new items are added
+      showMenu:false, // bool if menu is visible or not
+      showSync: true, // bool if sync button is show or add button
+      statusSyncData: false, //bool to control the class of the sync button to animate while synchronizing
+      syncStatus:'', // informative string wich shows the user the actual state od the sync
+      clicked: 0, // helper integer to count clicks for double tap functionability
+      itemIndexTmp: '', // helper string to control if the bouble click/tab was made to the same index
+      shareLink:'', // string with the link to share
+      sharing:false, // bool if input from where the shareLink will be copied is visible or not
+      shareLinkHide:true, // bool to control the invisible class of the input from where the shareLink will be copied
+      showToast:false, // bool if toast is visible or not
+      toastMessage:'Toast Message' // message which will be display on the toast
     }
   },
   created(){
+    this.setDefaultVariables()
     let items = localStorage.getItem('items')
     let listID = localStorage.getItem('listID')
     let lastUpdate = localStorage.getItem('lastUpdate')
@@ -123,6 +130,16 @@ export default {
       }, false)
   },
   methods:{
+    setDefaultVariables(){
+      this.changesCount = 0   
+      this.newItemInput=''
+      this.showMenu=false
+      this.shareLink=''
+      this.syncStatus=''
+      this.list.ID=false
+      this.list.timestamp=false
+      this.list.items=[]
+    },
     createList(data){
       axios.post('./php/updateList.php', data)
         .then(res => {
@@ -213,7 +230,7 @@ export default {
         for (let j = 0; j < localList.length; j++){
           if (serverList[i].ID == localList[j].ID) { // check if server item exist in local
             if (serverList[i].status == localList[j].status){ // check if status are the same it means no changes where made
-              console.log("same item and status ", serverList[i], localList[j])
+              // console.log("same item and status ", serverList[i], localList[j])
               newList.push(serverList[i]) // No Changes
               serverList.splice(i, 1)
               localList.splice(j, 1)
@@ -226,7 +243,7 @@ export default {
                   this.compareLocalChanges(localList, newList, lastUpdate)
                   return
                 } else {
-                  console.log("Ende1", newList)
+                  // console.log("Ende1", newList)
                   this.list.items = newList
                   this.list.timestamp = new Date().toJSON()
                   this.updateList(this.list) // pass newList
@@ -234,7 +251,7 @@ export default {
                 }    
               }
             } else { // status are not the same it means changes where made checked has priority!
-              console.log("same item different status", serverList[i], localList[j])
+              // console.log("same item different status", serverList[i], localList[j])
               serverList[i].status = 'checked' 
               newList.push(serverList[i])
               serverList.splice(i, 1)
@@ -248,7 +265,7 @@ export default {
                   this.compareLocalChanges(localList, newList, lastUpdate)
                   return
                 } else {
-                  console.log("Ende2", newList)
+                  // console.log("Ende2", newList)
                   this.list.items = newList
                   this.list.timestamp = new Date().toJSON()
                   this.updateList(this.list) // pass newList
@@ -260,7 +277,7 @@ export default {
         }
         // item dont exist in local
         if (new Date(serverList[i].timestamp).getTime() > lastUpdate) {
-          console.log("item has been added by 3rd party", serverList[i])
+          // console.log("item has been added by 3rd party", serverList[i])
           newList.unshift(serverList[i])
           serverList.splice(i, 1)
           if (serverList.length > 0){
@@ -272,7 +289,7 @@ export default {
                 this.compareLocalChanges(localList, newList, lastUpdate)
                 return
               } else {
-                console.log("Ende3", newList)
+                // console.log("Ende3", newList)
                 this.list.items = newList
                 this.list.timestamp = new Date().toJSON()
                 this.updateList(this.list) // pass newList
@@ -280,7 +297,7 @@ export default {
               }                  
             }
           } else {
-            console.log("item has been removed locally", serverList[i], new Date(lastUpdate).toJSON())
+            // console.log("item has been removed locally", serverList[i], new Date(lastUpdate).toJSON())
             serverList.splice(i, 1)            
             if (serverList.length > 0){
               this.compareChanges(serverList, localList, newList, lastUpdate, serverTimestamp)
@@ -291,7 +308,7 @@ export default {
                 this.compareLocalChanges(localList, newList, lastUpdate)
                 return
               } else {
-                console.log("Ende4", newList)
+                // console.log("Ende4", newList)
                 this.list.items = newList
                 this.list.timestamp = new Date().toJSON()
                 this.updateList(this.list) // pass newList
@@ -304,27 +321,27 @@ export default {
     compareLocalChanges(localList, newList, lastUpdate){
       for (let i=0; i < localList.length; i++){
         if(new Date(localList[i].timestamp).getTime() > lastUpdate){
-          console.log("item has been added locally", localList[i])
+          // console.log("item has been added locally", localList[i])
           newList.unshift(localList[i])
           localList.splice(i,1)
           if (localList.length > 0) {
             this.compareLocalChanges(localList, newList, lastUpdate)
             return
           } else {
-            console.log("Ende5", newList)
+            // console.log("Ende5", newList)
             this.list.items = newList
             this.list.timestamp = new Date().toJSON()
             this.updateList(this.list) // pass newList
             return
           }
         } else {
-          console.log("item has been removed by 3rd Party", localList[i])
+          // console.log("item has been removed by 3rd Party", localList[i])
           localList.splice(i,1)
           if (localList.length > 0) {
             this.compareLocalChanges(localList, newList, lastUpdate)
             return
           } else {
-            console.log("Ende6", newList)
+            // console.log("Ende6", newList)
             this.list.items = newList
             this.list.timestamp = new Date().toJSON()
             this.updateList(this.list) // pass newList
@@ -342,14 +359,7 @@ export default {
         return
       } else {
         this.getList(this.list.ID)
-      }      
-      
-      // history.pushState({}, '', '?'+this.list.ID)
-      // let vm = this
-      // this.statusSyncData = true
-      // setTimeout(() => {
-      //   this.statusSyncData = false
-      // },1200)
+      }     
     },
     syncDataLocal(){
       this.changesCount++
@@ -376,8 +386,6 @@ export default {
       }  else {
         this.list.items[index].status = 'unchecked'       
       }
-      
-      // this.items[index].timestamp = new Date().toJSON() 
       this.syncDataLocal()
 
       let vm=this
@@ -444,8 +452,44 @@ export default {
       this.syncDataLocal()
       this.showMenu=false
     },
-    shuffle(){
-      this.list.items = _.shuffle(this.list.items)
+    shareList(){      
+      if (this.list.ID != false){
+        let loc = document.location
+        this.shareLink = loc.origin + loc.pathname + loc.search
+        this.sharing=true
+        setTimeout(() => {
+          let link = document.getElementById('share-link')
+          link.focus()
+          link.select()          
+          let copyLink = document.execCommand('copy')   
+          link.blur() 
+          this.sharing = !copyLink
+          this.shareLinkHide = copyLink 
+          this.toast('Link würde kopiert')
+        }, 100)
+      } else {
+        this.toast('Bitte zuerst Synchronizieren')
+      } 
+      this.showMenu=false    
+    },
+    listNew(){
+      this.emptyList()
+      this.setDefaultVariables()
+      this.removeDataLocal()
+      history.pushState({},'','/')
+    },
+    login(){
+      this.toast('nicht verfügbar')
+    },
+    help(){
+      this.toast('nicht verfügbar')
+    },
+    toast(message){
+      this.showToast = true
+      this.toastMessage = message
+      setTimeout(()=>{
+        this.showToast = false
+      }, 2000)
     },
     modal(e){
       if(e.target.className == 'modal'){
@@ -604,7 +648,7 @@ li{
   transition: all .3s
 }
 .modal{
-  position: absolute;
+  position: fixed;
   top: 0;
   right: 0;
   background: #00000024;
@@ -638,5 +682,47 @@ li{
   opacity: 0;
   width: 200%;
   transform: translateX(150px);
+}
+.share-link-parent{
+  position:absolute;
+  bottom:20px;
+  left:0;
+  width: 100%;
+}
+#share-link{
+  width: 90%;
+  max-width: unset;
+  margin: 0 5%;
+  padding: unset;
+}
+.share-link-hidden{
+  color: transparent;
+  background: transparent;
+  box-shadow: unset;
+}
+.share-link-hidden::selection{
+  color:transparent;
+  background: transparent;
+}
+.toast{
+  position: fixed;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 0;
+  color: #f9f9f9;
+}
+.toast>span{  
+  background: #424242e6;
+  padding: 20px;
+  box-shadow: 1px 1px 2px black, 0 0 25px #cccccc, 0 0 5px #9c9c9c;
+}
+.slide-up-enter-active, .slide-up-leave-active {
+  transition: all .3s ease-in-out;
+}
+.slide-up-enter, .slide-up-leave-to /* .fade-leave-active below version 2.1.8 */ {
+  opacity: 0;
+  transform: translateY(150px);
 }
 </style>
