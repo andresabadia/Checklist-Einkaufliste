@@ -48,32 +48,7 @@ export default {
       list:{
         ID: false,
         timestamp: false,
-        items:[
-          {
-            ID: '1',
-            item: 'Milch',
-            quantity: 1,
-            timestamp: '1',
-            userID:'',
-            status: 'unchecked'
-          },
-          {
-            ID: '2',
-            item: 'Brot',
-            quantity: 2,
-            timestamp: '2',
-            userID:'',
-            status: 'checked'
-          },
-          {
-            ID: '3',
-            item: 'Zucker',
-            quantity: 1,
-            timestamp: '3',
-            userID:'',
-            status: 'unchecked'
-          }
-        ]
+        items:[]
       },
       changesCount: 0,  //counter for locally made changes    
       newItemInput:'', // Input field where new items are added
@@ -91,7 +66,7 @@ export default {
     }
   },
   created(){
-    this.setDefaultVariables()
+    // this.setDefaultVariables()
     let items = localStorage.getItem('items')
     let listID = localStorage.getItem('listID')
     let lastUpdate = localStorage.getItem('lastUpdate')
@@ -479,7 +454,7 @@ export default {
       this.emptyList()
       this.setDefaultVariables()
       this.removeDataLocal()
-      history.pushState({},'','/')
+      history.pushState({},'', document.location.pathname)
     },
     login(){
       this.toast('nicht verfügbar')
