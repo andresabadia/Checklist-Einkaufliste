@@ -1,10 +1,10 @@
 {
-    "ID": "lufGwNiPjsq6znkm",
-    "timestamp": "6",
+    "ID": "lufGwNiPjsq6znkn",
+    "timestamp": "8",
     "items":[
       {
         "ID": "1",
-        "item": "Milch",
+        "item": "Leche",
         "quantity": 1,
         "timestamp": "1",
         "userID":"",
@@ -12,7 +12,7 @@
       },
       {
         "ID": "2",
-        "item": "Brötchen",
+        "item": "Pan",
         "quantity": 2,
         "timestamp": "2",
         "userID":"",
@@ -20,7 +20,7 @@
       },
       {
         "ID": "3",
-        "item": "Zucker",
+        "item": "Azucar",
         "quantity": 1,
         "timestamp": "3",
         "userID":"",

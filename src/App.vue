@@ -13,7 +13,7 @@
       </div>
       <div class="liste">
         <transition-group name="main-list" tag="ul">>
-          <li v-for="(item, index) in list.items" @click="checkItem(index)" :key="item.ID" :class="{'checked':item.status=='checked'}"> {{ item.item }} - ( {{item.quantity}} ) </li>
+          <li v-for="(item, index) in list.items" @click="checkItem(index)" :key="item.ID" :class="{'checked':item.status=='checked'}"> {{ item.item }}</li>
         </transition-group>
       </div>    
     </div>
@@ -66,7 +66,7 @@ export default {
     }
   },
   created(){
-    // this.setDefaultVariables()
+    this.setDefaultVariables()
     let items = localStorage.getItem('items')
     let listID = localStorage.getItem('listID')
     let lastUpdate = localStorage.getItem('lastUpdate')
@@ -77,9 +77,10 @@ export default {
       this.list.ID = query.slice(1, query.length)
       if (listID != this.list.ID){
         this.removeDataLocal()//empty local storage
-        this.list.timestamp=0
+        this.list.timestamp="0"
         this.changesCount=0
         this.syncData()
+        return
       }
     }
     if(items!=null){
@@ -152,11 +153,14 @@ export default {
     getList(listID){
       axios.get('./lists/'+listID+'.json')
         .then(res => {
-          console.log('server: ' + res.data.timestamp +  'local: ' + this.list.timestamp)
+          console.log('server: ' + res.data.timestamp +  ' | local: ' + this.list.timestamp)
+          console.log('server: ' + res.data.ID +  ' | local: ' + this.list.ID)
+          console.log('server: ' + JSON.stringify(res.data.items))
+          console.log('changes: ' + this.changesCount)          
 
           let serverTimestamp = new Date(res.data.timestamp).getTime()
           let lastUpdate = new Date(this.list.timestamp).getTime()
-          
+          console.log(serverTimestamp, lastUpdate)
           //check for updates
           if(lastUpdate == serverTimestamp && this.changesCount == 0){
             console.log('check for updates')
@@ -344,7 +348,7 @@ export default {
     removeDataLocal(){
       localStorage.removeItem('items');
       localStorage.removeItem('changes');
-      localStorage.removeItem('lastUpdated')
+      localStorage.removeItem('lastUpdate')
       localStorage.removeItem('listID')
     },
     removeItem(index){      
