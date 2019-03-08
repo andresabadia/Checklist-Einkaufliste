@@ -1,7 +1,7 @@
 # Einkaufliste
 
 ## Aubout the Project
-This tool is a browser based Checklist. I build it to keep track of items to buy. Check the live [example](https://id-ex.de/examples/einkaufliste).
+This tool is a browser based Checklist. I build it to keep track of items to buy. Check the live [example](https://id-ex.de/examples/Einkaufliste).
 
 ### Main Features - Local
 This features are store localy in the browsers localstorage
