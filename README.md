@@ -1,4 +1,4 @@
-# Einkaufliste
+# Checklist-Einkaufliste
 
 ## Aubout the Project
 This tool is a browser based Checklist. I build it to keep track of items to buy. Check the live [example](https://id-ex.de/examples/Einkaufliste).
